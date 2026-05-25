@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>✦ 旅程小記 Journey Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500&family=Noto+Sans+TC:wght@300;400;500&family=Caveat:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --cream:#FBF8F3;--cream2:#F5F0E8;--cream3:#EDE6DA;
+  --rose:#E8A4A4;--rose2:#D4787A;--rose3:#F0CECE;--rose4:#FBF0F0;
+  --sage:#8BAF8B;--sage2:#6A9469;--sage3:#D4E8D4;--sage4:#F0F5EE;
+  --sky:#A4C4E0;--sky2:#6EA8D0;--sky3:#D8EAED;--sky4:#F0F6F9;
+  --amber:#D4A460;--amber2:#B8843A;--amber3:#F0DFC0;--amber4:#FBF5E8;
+  --lavender:#C4B8E0;--lavender2:#9D8DC8;--lavender3:#E4DCF0;--lavender4:#F5F2FB;
+  --mauve:#C8A0B0;--mauve2:#A87888;--mauve3:#ECD8E0;
+  --text:#3A3028;--text2:#6B5A50;--text3:#9A8880;--text4:#C0B0A8;
+  --border:#E8DDD0;--border2:#D8CCBC;
+  --white:#FFFFFF;--shadow:rgba(100,70,50,0.08);
+  --r:14px;--r-sm:8px;--r-xs:6px;
+}
+html{font-size:15px}
+body{
+  font-family:'Noto Sans TC',sans-serif;
+  background:var(--cream);color:var(--text);
+  min-height:100vh;
+}
+
+/* ── Decorative paper texture via box-shadow ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(circle at 20% 10%,rgba(232,164,164,0.08) 0%,transparent 50%),
+    radial-gradient(circle at 80% 80%,rgba(139,175,139,0.08) 0%,transparent 50%),
+    radial-gradient(circle at 60% 30%,rgba(212,188,160,0.06) 0%,transparent 40%);
+  pointer-events:none;z-index:0;
+}
+
+.app{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:32px 20px 60px}
+
+/* ── Header ── */
+.header{text-align:center;padding:40px 0 36px;margin-bottom:8px}
+.header-deco{font-family:'Caveat',cursive;font-size:13px;color:var(--text3);letter-spacing:3px;margin-bottom:10px}
+.header h1{
+  font-family:'Noto Serif TC',serif;font-size:30px;font-weight:400;
+  color:var(--text);letter-spacing:1px;line-height:1.3;margin-bottom:8px;
+}
+.header h1 span{color:var(--rose2)}
+.header-sub{font-size:12px;color:var(--text4);letter-spacing:1.5px}
+.header-dots{display:flex;justify-content:center;gap:8px;margin-top:18px}
+.header-dots span{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--rose3);display:inline-block;
+}
+.header-dots span:nth-child(2){background:var(--sage3)}
+.header-dots span:nth-child(3){background:var(--amber3)}
+
+/* ── Tab Nav ── */
+.tabs{display:flex;gap:4px;background:var(--cream3);border-radius:var(--r);padding:5px;margin-bottom:28px;border:1px solid var(--border)}
+.tab{
+  flex:1;padding:10px 8px;border-radius:10px;
+  font-size:13px;font-weight:400;color:var(--text3);
+  cursor:pointer;transition:all .2s;border:none;background:transparent;
+  font-family:'Noto Sans TC',sans-serif;letter-spacing:.3px;
+}
+.tab:hover{color:var(--text2);background:rgba(255,255,255,.6)}
+.tab.active{background:var(--white);color:var(--text);box-shadow:0 1px 4px var(--shadow);font-weight:500}
+.tab-icon{display:block;font-size:16px;margin-bottom:3px}
+
+/* ── Section cards ── */
+.section{
+  background:var(--white);border-radius:var(--r);
+  border:1px solid var(--border);padding:24px;margin-bottom:20px;
+  box-shadow:0 2px 12px var(--shadow);
+}
+.section-header{display:flex;align-items:center;gap:10px;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.section-icon{
+  width:34px;height:34px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;
+}
+.icon-rose{background:var(--rose4);color:var(--rose2)}
+.icon-sage{background:var(--sage4);color:var(--sage2)}
+.icon-sky{background:var(--sky4);color:var(--sky2)}
+.icon-amber{background:var(--amber4);color:var(--amber2)}
+.icon-lavender{background:var(--lavender4);color:var(--lavender2)}
+.section-title{font-family:'Noto Serif TC',serif;font-size:16px;font-weight:400;color:var(--text)}
+.section-sub{font-size:11px;color:var(--text4);margin-top:1px;letter-spacing:.5px}
+
+/* ── Forms ── */
+.form-row{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.form-group{display:flex;flex-direction:column;gap:5px;flex:1;min-width:120px}
+.form-group label{font-size:11px;color:var(--text3);letter-spacing:.5px}
+input,select,textarea{
+  font-family:'Noto Sans TC',sans-serif;font-size:13px;color:var(--text);
+  background:var(--cream);border:1px solid var(--border);
+  border-radius:var(--r-sm);padding:9px 12px;
+  outline:none;transition:border-color .15s,background .15s;width:100%;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--rose);background:var(--white)}
+textarea{resize:vertical;min-height:70px}
+select{cursor:pointer}
+
+/* ── Buttons ── */
+.btn{
+  font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:500;
+  padding:9px 18px;border-radius:var(--r-sm);border:none;cursor:pointer;
+  transition:all .18s;letter-spacing:.3px;white-space:nowrap;
+}
+.btn-rose{background:var(--rose);color:var(--white)}
+.btn-rose:hover{background:var(--rose2)}
+.btn-sage{background:var(--sage3);color:var(--sage2)}
+.btn-sage:hover{background:var(--sage);color:var(--white)}
+.btn-sky{background:var(--sky3);color:var(--sky2)}
+.btn-sky:hover{background:var(--sky2);color:var(--white)}
+.btn-amber{background:var(--amber3);color:var(--amber2)}
+.btn-amber:hover{background:var(--amber);color:var(--white)}
+.btn-lavender{background:var(--lavender3);color:var(--lavender2)}
+.btn-lavender:hover{background:var(--lavender2);color:var(--white)}
+.btn-ghost{background:transparent;color:var(--text3);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text2)}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:6px}
+.btn-icon{padding:7px;border-radius:6px;font-size:14px;line-height:1}
+
+/* ── Date group ── */
+.date-group{margin-bottom:20px}
+.date-label{
+  display:flex;align-items:center;gap:10px;margin-bottom:10px;
+  font-family:'Noto Serif TC',serif;font-size:14px;font-weight:400;
+  color:var(--text2);padding:6px 0;
+}
+.date-label::before,.date-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.date-label .date-pill{
+  background:var(--cream3);border:1px solid var(--border);
+  border-radius:20px;padding:4px 14px;font-size:12px;white-space:nowrap;color:var(--text2);
+}
+
+/* ── Event block ── */
+.event-block{
+  display:flex;gap:12px;align-items:stretch;
+  background:var(--cream);border:1px solid var(--border);
+  border-radius:var(--r-sm);padding:12px 14px;margin-bottom:8px;
+  position:relative;transition:box-shadow .15s;
+}
+.event-block:hover{box-shadow:0 2px 8px var(--shadow)}
+.event-time-col{
+  display:flex;flex-direction:column;align-items:center;min-width:52px;
+}
+.event-time{
+  font-family:'Caveat',cursive;font-size:17px;font-weight:500;
+  color:var(--text2);text-align:center;line-height:1.2;
+}
+.event-time-dot{
+  flex:1;width:2px;background:var(--border);margin:4px 0;min-height:12px;
+  border-radius:1px;
+}
+.event-color-bar{
+  width:3px;border-radius:2px;flex-shrink:0;align-self:stretch;
+}
+.event-content{flex:1;min-width:0}
+.event-title{font-size:14px;font-weight:500;color:var(--text);margin-bottom:2px}
+.event-meta{font-size:12px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+.event-meta span{display:flex;align-items:center;gap:4px}
+.event-notes{font-size:12px;color:var(--text3);font-style:italic;margin-top:4px}
+.event-actions{display:flex;gap:6px;flex-shrink:0;align-self:flex-start}
+
+/* ── Time color legend ── */
+.time-legend{
+  display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;
+  padding:12px 14px;background:var(--cream);border-radius:var(--r-sm);
+  border:1px solid var(--border);
+}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3)}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* ── Map ── */
+#map,#food-map{
+  height:360px;border-radius:var(--r-sm);overflow:hidden;
+  border:2px solid var(--border2);margin-top:4px;
+  box-shadow:0 3px 16px var(--shadow),inset 0 0 0 1px rgba(255,255,255,.4);
+}
+#food-map{height:280px}
+
+/* ── To-do ── */
+.todo-item{
+  display:flex;align-items:center;gap:12px;padding:11px 14px;
+  border-radius:var(--r-sm);margin-bottom:6px;
+  border:1px solid var(--border);background:var(--cream);
+  transition:all .18s;cursor:pointer;
+}
+.todo-item.done{background:var(--sage4);border-color:var(--sage3)}
+.todo-item.done .todo-text{text-decoration:line-through;color:var(--text4)}
+.todo-check{
+  width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border2);
+  background:var(--white);flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  transition:all .18s;font-size:11px;
+}
+.todo-item.done .todo-check{background:var(--sage);border-color:var(--sage);color:var(--white)}
+.todo-text{font-size:13px;flex:1;color:var(--text)}
+.todo-tag{
+  font-size:11px;padding:2px 8px;border-radius:10px;
+  background:var(--rose4);color:var(--rose2);border:1px solid var(--rose3);
+  white-space:nowrap;
+}
+.todo-del{
+  font-size:16px;color:var(--text4);background:none;border:none;cursor:pointer;
+  padding:2px 4px;border-radius:4px;transition:color .15s;
+}
+.todo-del:hover{color:var(--rose2)}
+
+/* ── Restaurant ── */
+.restaurant-card{
+  border:1px solid var(--border);border-radius:var(--r-sm);
+  background:var(--cream);overflow:hidden;margin-bottom:10px;
+  transition:box-shadow .15s;
+}
+.restaurant-card:hover{box-shadow:0 3px 10px var(--shadow)}
+.restaurant-card-inner{display:flex;gap:0;align-items:stretch}
+.restaurant-color-bar{width:4px;flex-shrink:0}
+.restaurant-body{padding:12px 14px;flex:1}
+.restaurant-name{font-size:14px;font-weight:500;color:var(--text);margin-bottom:3px}
+.restaurant-addr{font-size:12px;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;gap:4px}
+.restaurant-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.restaurant-tag{font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid}
+.restaurant-actions{display:flex;gap:6px;margin-top:4px}
+.map-link{
+  font-size:11px;color:var(--sky2);text-decoration:none;
+  display:inline-flex;align-items:center;gap:3px;padding:3px 8px;
+  border:1px solid var(--sky3);border-radius:5px;background:var(--sky4);
+  transition:all .15s;
+}
+.map-link:hover{background:var(--sky3)}
+
+/* ── Empty state ── */
+.empty-state{
+  text-align:center;padding:32px 20px;color:var(--text4);
+}
+.empty-deco{font-size:32px;margin-bottom:10px;opacity:.5}
+.empty-text{font-size:13px;font-style:italic}
+
+/* ── Chip / badge ── */
+.chip{
+  display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;
+  font-weight:400;border:1px solid;
+}
+
+/* ── AI thinking indicator ── */
+.ai-loading{
+  display:none;align-items:center;gap:8px;padding:8px 12px;
+  background:var(--lavender4);border-radius:var(--r-sm);font-size:12px;color:var(--lavender2);
+  margin-top:8px;border:1px solid var(--lavender3);
+}
+.ai-loading.show{display:flex}
+.dot-anim{display:flex;gap:4px}
+.dot-anim span{
+  width:5px;height:5px;border-radius:50%;background:var(--lavender2);
+  animation:blink 1.2s ease-in-out infinite;
+}
+.dot-anim span:nth-child(2){animation-delay:.2s}
+.dot-anim span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+/* ── Date tabs ── */
+.date-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.date-tab{
+  padding:5px 14px;border-radius:20px;font-size:12px;cursor:pointer;
+  border:1px solid var(--border);background:var(--cream);color:var(--text3);
+  transition:all .15s;font-family:'Noto Sans TC',sans-serif;
+}
+.date-tab.active{background:var(--rose4);border-color:var(--rose3);color:var(--rose2);font-weight:500}
+.date-tab:hover:not(.active){background:var(--white)}
+
+/* ── Scrollable container ── */
+.scroll-area{max-height:420px;overflow-y:auto;padding-right:2px}
+.scroll-area::-webkit-scrollbar{width:4px}
+.scroll-area::-webkit-scrollbar-track{background:transparent}
+.scroll-area::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+.panel{display:none}
+.panel.active{display:block}
+
+/* ── Save toast ── */
+#save-toast{
+  position:fixed;bottom:24px;right:24px;
+  background:var(--sage);color:var(--white);
+  font-size:12px;padding:8px 16px;border-radius:20px;
+  letter-spacing:.5px;font-weight:500;
+  opacity:0;transform:translateY(8px);
+  transition:opacity .25s,transform .25s;
+  pointer-events:none;z-index:9999;
+  box-shadow:0 4px 16px rgba(0,0,0,.12);
+}
+#save-toast.show{opacity:1;transform:translateY(0)}
+
+/* ── App loader ── */
+#app-loader{
+  position:fixed;inset:0;background:var(--cream);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:9998;gap:14px;
+}
+#app-loader .loader-text{
+  font-family:'Noto Serif TC',serif;font-size:15px;color:var(--text3);letter-spacing:1px;
+}
+.loader-dots{display:flex;gap:7px}
+.loader-dots span{
+  width:8px;height:8px;border-radius:50%;background:var(--rose3);
+  animation:blink 1.3s ease-in-out infinite;
+}
+.loader-dots span:nth-child(2){animation-delay:.2s;background:var(--sage3)}
+.loader-dots span:nth-child(3){animation-delay:.4s;background:var(--amber3)}
+
+/* ── Leaflet custom styling ── */
+#map .leaflet-tile-pane,
+#food-map .leaflet-tile-pane{
+  filter:sepia(22%) saturate(1.1) brightness(1.02) hue-rotate(-4deg);
+}
+
+.leaflet-popup-content-wrapper{
+  border-radius:10px !important;
+  box-shadow:0 4px 16px rgba(0,0,0,.12) !important;
+  font-family:'Noto Sans TC',sans-serif !important;
+}
+.leaflet-popup-content{margin:12px 14px !important;font-size:13px !important;color:var(--text) !important}
+.popup-title{font-weight:500;margin-bottom:3px}
+.popup-time{font-size:11px;color:var(--text3)}
+
+/* ── Responsive ── */
+@media(max-width:600px){
+  .form-row{flex-direction:column}
+  .tabs{gap:2px}
+  .tab{padding:8px 4px;font-size:11px}
+}
+</style>
+</head>
+<body>
+<div id="app-loader">
+  <div class="loader-dots"><span></span><span></span><span></span></div>
+  <div class="loader-text">載入旅程記錄中…</div>
+</div>
+<div id="save-toast">✦ 已儲存</div>
+
+<div class="app">
+
+  <div class="header">
+    <div class="header-deco">✦ &nbsp;JOURNEY PLANNER&nbsp; ✦</div>
+    <h1>旅程小記 <span>&</span> 行程規劃</h1>
+    <div class="header-sub">SCHEDULE · MAP · TODO · RESTAURANTS</div>
+    <div class="header-dots"><span></span><span></span><span></span><span></span><span></span></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab(event,'schedule')">
+      <span class="tab-icon">🗓</span>行程安排
+    </button>
+    <button class="tab" onclick="switchTab(event,'map')">
+      <span class="tab-icon">🗺</span>地圖路線
+    </button>
+    <button class="tab" onclick="switchTab(event,'todo')">
+      <span class="tab-icon">☑</span>待辦清單
+    </button>
+    <button class="tab" onclick="switchTab(event,'food')">
+      <span class="tab-icon">🍽</span>餐廳收藏
+    </button>
+  </div>
+
+  <!-- ═══════════ SCHEDULE TAB ═══════════ -->
+  <div id="panel-schedule" class="panel active">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon icon-rose">✦</div>
+        <div><div class="section-title">新增行程</div><div class="section-sub">ADD SCHEDULE EVENT</div></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="min-width:140px">
+          <label>日期 Date</label>
+          <input type="date" id="evt-date"/>
+        </div>
+        <div class="form-group" style="max-width:110px">
+          <label>時間 Time</label>
+          <input type="time" id="evt-time"/>
+        </div>
+        <div class="form-group">
+          <label>地點 Location</label>
+          <input type="text" id="evt-location" placeholder="e.g. 清水斷崖"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>標題 Title</label>
+          <input type="text" id="evt-title" placeholder="e.g. 早餐 → 龍山寺參拜"/>
+        </div>
+        <div class="form-group" style="max-width:120px">
+          <label>分類 Category</label>
+          <select id="evt-cat">
+            <option value="transport">🚗 交通</option>
+            <option value="food">🍜 飲食</option>
+            <option value="sight">🏯 景點</option>
+            <option value="hotel">🏡 住宿</option>
+            <option value="shop">🛍 購物</option>
+            <option value="rest">☕ 休息</option>
+            <option value="other">✦ 其他</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>備註 Notes（選填）</label>
+          <input type="text" id="evt-notes" placeholder="補充說明…"/>
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-rose" onclick="addEvent()">＋ 加入行程</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon icon-sage">☽</div>
+        <div><div class="section-title">行程一覽</div><div class="section-sub">SCHEDULE OVERVIEW</div></div>
+      </div>
+      <div class="time-legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#F0A0A0"></span>清晨 00–06</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#F5C87A"></span>早晨 06–10</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#A0C88A"></span>上午 10–12</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#7AC0E0"></span>下午 12–17</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#C0A0D8"></span>傍晚 17–20</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#8090B8"></span>夜晚 20–24</div>
+      </div>
+      <div id="schedule-list"><div class="empty-state"><div class="empty-deco">🌸</div><div class="empty-text">尚未加入任何行程，試試輸入日期與地點吧～</div></div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ MAP TAB ═══════════ -->
+  <div id="panel-map" class="panel">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon icon-sky">◎</div>
+        <div><div class="section-title">路線地圖</div><div class="section-sub">ALL DATES ON ONE MAP</div></div>
+      </div>
+      <div class="time-legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#F0A0A0"></span>清晨</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#F5C87A"></span>早晨</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#A0C88A"></span>上午</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#7AC0E0"></span>下午</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#C0A0D8"></span>傍晚</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#8090B8"></span>夜晚</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#D4A460"></span>餐廳</div>
+      </div>
+      <div id="map"></div>
+      <p style="font-size:11px;color:var(--text4);margin-top:8px;text-align:center">
+        ✦ 地點需有效地名才會顯示於地圖 · 可在行程中加入座標後更新
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══════════ TODO TAB ═══════════ -->
+  <div id="panel-todo" class="panel">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon icon-amber">✓</div>
+        <div><div class="section-title">待辦清單</div><div class="section-sub">TODO LIST</div></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>待辦事項</label>
+          <input type="text" id="todo-text" placeholder="e.g. 預訂民宿、換日幣、買防曬…" onkeydown="if(event.key==='Enter')addTodo()"/>
+        </div>
+        <div class="form-group" style="max-width:110px">
+          <label>標籤 Tag</label>
+          <input type="text" id="todo-tag" placeholder="e.g. 準備"/>
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-amber" onclick="addTodo()">＋ 新增</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="filterTodo('all')">全部</button>
+        <button class="btn btn-ghost btn-sm" onclick="filterTodo('undone')">未完成</button>
+        <button class="btn btn-ghost btn-sm" onclick="filterTodo('done')">已完成</button>
+      </div>
+      <div class="scroll-area" id="todo-list">
+        <div class="empty-state"><div class="empty-deco">☁</div><div class="empty-text">清單還是空的，快來寫下旅行前的準備吧！</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ FOOD TAB ═══════════ -->
+  <div id="panel-food" class="panel">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon icon-lavender">♡</div>
+        <div><div class="section-title">餐廳收藏</div><div class="section-sub">RESTAURANT WISHLIST</div></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>餐廳名稱（輸入後自動帶入 Google Maps）</label>
+          <input type="text" id="rest-name" placeholder="e.g. 鼎泰豐 101 店" onkeydown="if(event.key==='Enter')addRestaurant()"/>
+        </div>
+        <div class="form-group" style="max-width:110px">
+          <label>城市 City</label>
+          <input type="text" id="rest-city" placeholder="e.g. 台北"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="max-width:110px">
+          <label>類型 Type</label>
+          <select id="rest-type">
+            <option>🍱 台式</option>
+            <option>🍜 日式</option>
+            <option>🍝 義式</option>
+            <option>🥩 燒肉</option>
+            <option>☕ 咖啡</option>
+            <option>🧁 甜點</option>
+            <option>🍺 酒吧</option>
+            <option>✦ 其他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>備註 Notes</label>
+          <input type="text" id="rest-notes" placeholder="e.g. 必點XO炒飯、需提前預約…"/>
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-lavender" onclick="addRestaurant()">＋ 收藏</button>
+        </div>
+      </div>
+      <div class="ai-loading" id="rest-loading">
+        <div class="dot-anim"><span></span><span></span><span></span></div>
+        正在生成 Google Maps 連結…
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon icon-lavender">🗺</div>
+        <div><div class="section-title">我的美食地圖</div><div class="section-sub">FOOD MAP</div></div>
+      </div>
+      <div id="food-map"></div>
+      <div class="scroll-area" id="restaurant-list">
+        <div class="empty-state"><div class="empty-deco">🍵</div><div class="empty-text">還沒有收藏餐廳，輸入餐廳名稱開始探索吧！</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ═══════════════════════════════
+// STATE & INITIALIZATION
+// ═══════════════════════════════
+let events = [];
+let todos = [];
+let restaurants = [];
+let todoFilter = 'all';
+let map, foodMap;
+let mapMarkers = [], routeLayers = [], foodMarkers = [];
+let mapInitialized = false, foodMapInitialized = false;
+
+// ── Time → Color Mapping ──
+function timeColor(hhmm) {
+  if (!hhmm) return '#C0C0C0';
+  const h = parseInt(hhmm.split(':')[0]);
+  if (h < 6) return '#F0A0A0';      // 清晨
+  if (h < 10) return '#F5C87A';      // 早晨
+  if (h < 12) return '#A0C88A';      // 上午
+  if (h < 17) return '#7AC0E0';      // 下午
+  if (h < 20) return '#C0A0D8';      // 傍晚
+  return '#8090B8';                   // 夜晚
+}
+
+// ── Category Icons & Colors ──
+const catIcon = {
+  transport: '🚗', food: '🍜', sight: '🏯', hotel: '🏡',
+  shop: '🛍', rest: '☕', other: '✦'
+};
+const catColors = {
+  transport: ['#D8E8F5', '#6090B8'], food: ['#FFF0E0', '#D4804A'],
+  sight: ['#E8F5E0', '#5A9040'], hotel: ['#F5E8F0', '#A060A0'],
+  shop: ['#FFF0F5', '#C06080'], rest: ['#F5EEE0', '#B09050'],
+  other: ['#F0F0F5', '#8080A0']
+};
+
+// ═══════════════════════════════
+// STORAGE LAYER
+// ═══════════════════════════════
+async function save() {
+  const payload = JSON.stringify({ events, todos, restaurants });
+  try {
+    // Try Claude storage first
+    if (window.storage && window.storage.set) {
+      await window.storage.set('jp-data', payload);
+      showSaveIndicator('saved');
+      return;
+    }
+  } catch (e) {
+    console.debug('Claude storage unavailable');
+  }
+  
+  // Fallback to localStorage
+  try {
+    localStorage.setItem('jp-data', payload);
+    showSaveIndicator('local');
+  } catch (e) {
+    console.warn('All storage failed');
+  }
+}
+
+async function loadData() {
+  try {
+    if (window.storage && window.storage.get) {
+      const res = await window.storage.get('jp-data');
+      if (res && res.value) {
+        const d = JSON.parse(res.value);
+        events = d.events || [];
+        todos = d.todos || [];
+        restaurants = d.restaurants || [];
+        return;
+      }
+    }
+  } catch (e) {
+    console.debug('Claude storage read failed');
+  }
+  
+  // Fallback to localStorage
+  try {
+    const raw = localStorage.getItem('jp-data');
+    if (raw) {
+      const d = JSON.parse(raw);
+      events = d.events || [];
+      todos = d.todos || [];
+      restaurants = d.restaurants || [];
+    }
+  } catch (e) {
+    console.warn('localStorage read failed');
+  }
+}
+
+function showSaveIndicator(type) {
+  const el = document.getElementById('save-toast');
+  if (!el) return;
+  el.textContent = type === 'saved' ? '✦ 已儲存' : '✦ 已儲存（本機）';
+  el.classList.add('show');
+  clearTimeout(el._timeout);
+  el._timeout = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ═══════════════════════════════
+// TAB NAVIGATION
+// ═══════════════════════════════
+function switchTab(evt, name) {
+  evt.preventDefault();
+  
+  // Hide all panels
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  
+  // Show selected panel
+  document.getElementById('panel-' + name).classList.add('active');
+  evt.currentTarget.classList.add('active');
+  
+  // Initialize maps on demand
+  if (name === 'map') {
+    setTimeout(() => {
+      if (!mapInitialized) {
+        initMap();
+        mapInitialized = true;
+      } else {
+        map.invalidateSize();
+        renderMap();
+      }
+    }, 50);
+  } else if (name === 'food') {
+    setTimeout(() => {
+      if (!foodMapInitialized) {
+        initFoodMap();
+        foodMapInitialized = true;
+      } else {
+        foodMap.invalidateSize();
+        renderFoodMap();
+      }
+    }, 50);
+  }
+}
+
+// ═══════════════════════════════
+// SCHEDULE MANAGEMENT
+// ═══════════════════════════════
+function addEvent() {
+  const date = document.getElementById('evt-date').value;
+  const time = document.getElementById('evt-time').value;
+  const location = document.getElementById('evt-location').value.trim();
+  const title = document.getElementById('evt-title').value.trim();
+  const cat = document.getElementById('evt-cat').value;
+  const notes = document.getElementById('evt-notes').value.trim();
+  
+  if (!date || !time || !title) {
+    alert('請填入日期、時間及標題');
+    return;
+  }
+  
+  events.push({
+    id: Date.now(),
+    date,
+    time,
+    location,
+    title,
+    cat,
+    notes
+  });
+  
+  // Sort by date, then time
+  events.sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return a.time.localeCompare(b.time);
+  });
+  
+  save();
+  renderSchedule();
+  
+  // Clear form
+  document.getElementById('evt-date').value = '';
+  document.getElementById('evt-time').value = '';
+  document.getElementById('evt-location').value = '';
+  document.getElementById('evt-title').value = '';
+  document.getElementById('evt-notes').value = '';
+}
+
+function deleteEvent(id) {
+  events = events.filter(e => e.id !== id);
+  save();
+  renderSchedule();
+  if (mapInitialized) renderMap();
+}
+
+function renderSchedule() {
+  const el = document.getElementById('schedule-list');
+  
+  if (!events.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-deco">🌸</div><div class="empty-text">尚未加入任何行程，試試輸入日期與地點吧～</div></div>';
+    return;
+  }
+  
+  // Group events by date
+  const byDate = {};
+  events.forEach(e => {
+    if (!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e);
+  });
+  
+  let html = '<div class="scroll-area">';
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+  
+  for (const [date, evts] of Object.entries(byDate)) {
+    const d = new Date(date + 'T00:00');
+    const weekday = weekdays[d.getDay()];
+    const label = `${date}（${weekday}）`;
+    
+    html += `<div class="date-group"><div class="date-label"><span class="date-pill">📅 ${label}</span></div>`;
+    
+    evts.forEach(e => {
+      const col = timeColor(e.time);
+      const [bg, tc] = catColors[e.cat] || ['#F5F5F5', '#808080'];
+      
+      html += `
+        <div class="event-block">
+          <div class="event-time-col">
+            <div class="event-time">${e.time}</div>
+            <div class="event-time-dot"></div>
+          </div>
+          <div class="event-color-bar" style="background:${col}"></div>
+          <div class="event-content">
+            <div class="event-title">${catIcon[e.cat] || '✦'} ${e.title}</div>
+            <div class="event-meta">
+              ${e.location ? `<span>📍 ${e.location}</span>` : ''}
+              <span style="background:${bg};color:${tc};padding:1px 7px;border-radius:8px;font-size:11px;border:1px solid ${tc}30">${e.cat}</span>
+            </div>
+            ${e.notes ? `<div class="event-notes">「${e.notes}」</div>` : ''}
+          </div>
+          <div class="event-actions">
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteEvent(${e.id})" title="刪除">✕</button>
+          </div>
+        </div>
+      `;
+    });
+    
+    html += '</div>';
+  }
+  
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════
+// MAP FUNCTIONS
+// ═══════════════════════════════
+function initMap() {
+  map = L.map('map', { zoomControl: true }).setView([25.04, 121.51], 11);
+  
+  // Watercolor base layer
+  L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg', {
+    attribution: '© <a href="https://stamen.com">Stamen Design</a> · © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 16,
+    minZoom: 2
+  }).addTo(map);
+  
+  // Labels layer
+  L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_terrain_labels/{z}/{x}/{y}.png', {
+    attribution: '',
+    maxZoom: 16,
+    minZoom: 2,
+    opacity: 0.8
+  }).addTo(map);
+  
+  renderMap();
+}
+
+async function geocode(query) {
+  try {
+    const resp = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
+      { headers: { 'Accept-Language': 'zh-TW' } }
+    );
+    const data = await resp.json();
+    if (data && data[0]) {
+      return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+    }
+  } catch (e) {
+    console.debug('Geocoding error:', e);
+  }
+  return null;
+}
+
+async function renderMap() {
+  if (!mapInitialized) return;
+  
+  // Clear existing markers and layers
+  mapMarkers.forEach(m => map.removeLayer(m));
+  routeLayers.forEach(l => map.removeLayer(l));
+  mapMarkers = [];
+  routeLayers = [];
+  
+  // Group events by date
+  const byDate = {};
+  events.forEach(e => {
+    if (e.location) {
+      if (!byDate[e.date]) byDate[e.date] = [];
+      byDate[e.date].push(e);
+    }
+  });
+  
+  const dateColors = ['#E07070', '#70A0E0', '#70C088', '#C0A060', '#A070C0', '#E09060'];
+  let colorIdx = 0;
+  const allCoords = [];
+  
+  for (const [date, evts] of Object.entries(byDate)) {
+    const dateColor = dateColors[colorIdx % dateColors.length];
+    colorIdx++;
+    
+    const coords = [];
+    
+    for (const e of evts) {
+      const ll = await geocode(e.location);
+      if (!ll) continue;
+      
+      coords.push(ll);
+      allCoords.push(ll);
+      
+      const tc = timeColor(e.time);
+      const icon = L.divIcon({
+        className: '',
+        html: `
+          <div style="
+            width:32px;height:32px;border-radius:50%;
+            background:${tc};border:2.5px solid white;
+            display:flex;align-items:center;justify-content:center;
+            font-size:14px;
+            box-shadow:0 2px 8px rgba(0,0,0,.22),0 0 0 1px ${tc}55;
+            color:white;font-weight:600;
+            transform:rotate(-3deg);
+          ">${catIcon[e.cat] || '✦'}</div>
+        `,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+      
+      const marker = L.marker(ll, { icon }).addTo(map);
+      marker.bindPopup(
+        `<div class="popup-title">${e.title}</div><div class="popup-time">⏰ ${e.time} &nbsp;📍 ${e.location}</div>`
+      );
+      mapMarkers.push(marker);
+    }
+    
+    // Draw polyline connecting events from same day
+    if (coords.length > 1) {
+      const line = L.polyline(coords, {
+        color: dateColor,
+        weight: 3.5,
+        opacity: 0.75,
+        dashArray: '8 5',
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(map);
+      routeLayers.push(line);
+    }
+  }
+  
+  // Fit bounds to show all markers
+  if (allCoords.length > 0) {
+    const group = L.featureGroup(mapMarkers);
+    map.fitBounds(group.getBounds().pad(0.2));
+  }
+}
+
+// ═══════════════════════════════
+// TODO MANAGEMENT
+// ═══════════════════════════════
+function addTodo() {
+  const text = document.getElementById('todo-text').value.trim();
+  const tag = document.getElementById('todo-tag').value.trim();
+  
+  if (!text) return;
+  
+  todos.push({
+    id: Date.now(),
+    text,
+    tag,
+    done: false
+  });
+  
+  save();
+  renderTodo();
+  
+  // Clear form
+  document.getElementById('todo-text').value = '';
+  document.getElementById('todo-tag').value = '';
+}
+
+function toggleTodo(id) {
+  const todo = todos.find(t => t.id === id);
+  if (todo) todo.done = !todo.done;
+  save();
+  renderTodo();
+}
+
+function deleteTodo(id) {
+  todos = todos.filter(t => t.id !== id);
+  save();
+  renderTodo();
+}
+
+function filterTodo(f) {
+  todoFilter = f;
+  renderTodo();
+}
+
+function renderTodo() {
+  const el = document.getElementById('todo-list');
+  
+  let list = todos;
+  if (todoFilter === 'done') list = todos.filter(t => t.done);
+  if (todoFilter === 'undone') list = todos.filter(t => !t.done);
+  
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-deco">☁</div><div class="empty-text">這裡空空的～</div></div>';
+    return;
+  }
+  
+  el.innerHTML = list.map(t => `
+    <div class="todo-item${t.done ? ' done' : ''}" onclick="toggleTodo(${t.id})">
+      <div class="todo-check">${t.done ? '✓' : ''}</div>
+      <div class="todo-text">${escapeHtml(t.text)}</div>
+      ${t.tag ? `<span class="todo-tag">${escapeHtml(t.tag)}</span>` : ''}
+      <button class="todo-del" onclick="event.stopPropagation();deleteTodo(${t.id})" title="刪除">✕</button>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════
+// RESTAURANT MANAGEMENT
+// ═══════════════════════════════
+function initFoodMap() {
+  foodMap = L.map('food-map', { zoomControl: true }).setView([25.04, 121.51], 11);
+  
+  L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg', {
+    attribution: '© <a href="https://stamen.com">Stamen Design</a> · © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 16,
+    minZoom: 2
+  }).addTo(foodMap);
+  
+  L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_terrain_labels/{z}/{x}/{y}.png', {
+    attribution: '',
+    maxZoom: 16,
+    minZoom: 2,
+    opacity: 0.8
+  }).addTo(foodMap);
+  
+  renderFoodMap();
+}
+
+async function addRestaurant() {
+  const name = document.getElementById('rest-name').value.trim();
+  const city = document.getElementById('rest-city').value.trim();
+  const type = document.getElementById('rest-type').value;
+  const notes = document.getElementById('rest-notes').value.trim();
+  
+  if (!name) return;
+  
+  const loading = document.getElementById('rest-loading');
+  loading.classList.add('show');
+  
+  const query = city ? `${name} ${city}` : name;
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  const ll = await geocode(query);
+  
+  loading.classList.remove('show');
+  
+  restaurants.push({
+    id: Date.now(),
+    name,
+    city,
+    type,
+    notes,
+    mapsUrl,
+    ll
+  });
+  
+  save();
+  renderRestaurants();
+  if (foodMapInitialized) renderFoodMap();
+  
+  // Clear form
+  document.getElementById('rest-name').value = '';
+  document.getElementById('rest-city').value = '';
+  document.getElementById('rest-notes').value = '';
+}
+
+function deleteRestaurant(id) {
+  restaurants = restaurants.filter(r => r.id !== id);
+  save();
+  renderRestaurants();
+  if (foodMapInitialized) renderFoodMap();
+}
+
+function renderRestaurants() {
+  const el = document.getElementById('restaurant-list');
+  
+  if (!restaurants.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-deco">🍵</div><div class="empty-text">還沒有收藏餐廳，輸入餐廳名稱開始探索吧！</div></div>';
+    return;
+  }
+  
+  el.innerHTML = restaurants.map(r => `
+    <div class="restaurant-card">
+      <div class="restaurant-card-inner">
+        <div class="restaurant-color-bar" style="background:var(--lavender)"></div>
+        <div class="restaurant-body">
+          <div class="restaurant-name">${escapeHtml(r.name)}</div>
+          <div class="restaurant-addr">📍 ${escapeHtml(r.city || '未知城市')}</div>
+          <div class="restaurant-tags">
+            <span class="restaurant-tag" style="background:var(--lavender4);color:var(--lavender2);border-color:var(--lavender3)">${escapeHtml(r.type)}</span>
+            ${r.notes ? `<span class="restaurant-tag" style="background:var(--cream2);color:var(--text3);border-color:var(--border)">📝 ${escapeHtml(r.notes)}</span>` : ''}
+          </div>
+          <div class="restaurant-actions">
+            <a class="map-link" href="${r.mapsUrl}" target="_blank">🗺 Google Maps</a>
+            <button class="btn btn-ghost btn-sm" onclick="deleteRestaurant(${r.id})">移除</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function renderFoodMap() {
+  if (!foodMapInitialized) return;
+  
+  foodMarkers.forEach(m => foodMap.removeLayer(m));
+  foodMarkers = [];
+  
+  const rs = restaurants.filter(r => r.ll);
+  
+  rs.forEach(r => {
+    const icon = L.divIcon({
+      className: '',
+      html: `
+        <div style="
+          width:34px;height:34px;border-radius:50%;
+          background:#D4A460;border:2.5px solid white;
+          display:flex;align-items:center;justify-content:center;
+          font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.22),0 0 0 1px #D4A46055;
+          transform:rotate(3deg);
+        ">🍽</div>
+      `,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
+    });
+    
+    const marker = L.marker(r.ll, { icon }).addTo(foodMap);
+    marker.bindPopup(
+      `<div class="popup-title">${escapeHtml(r.name)}</div><div class="popup-time">${escapeHtml(r.type)} · ${escapeHtml(r.city || '')}</div>`
+    );
+    foodMarkers.push(marker);
+  });
+  
+  if (foodMarkers.length > 0) {
+    const group = L.featureGroup(foodMarkers);
+    foodMap.fitBounds(group.getBounds().pad(0.3));
+  }
+}
+
+// ═══════════════════════════════
+// UTILITIES
+// ═══════════════════════════════
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// ═══════════════════════════════
+// APP INITIALIZATION
+// ═══════════════════════════════
+async function init() {
+  const loader = document.getElementById('app-loader');
+  if (loader) loader.style.display = 'flex';
+  
+  await loadData();
+  
+  if (loader) loader.style.display = 'none';
+  
+  renderSchedule();
+  renderTodo();
+  renderRestaurants();
+}
+
+// Start the app
+init();
+</script>
+</body>
+</html>
